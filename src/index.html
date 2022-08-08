@@ -1,0 +1,149 @@
+<!-- Quedamos en el minuto 2:16 -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Game</title>
+  <link rel="stylesheet" href="./main.css" />
+</head>
+
+<body>
+  <section id="arena">
+    <!-- Vamos removiendo el contenido HTML para manejarlo en JS de forma dinamica como componentes -->
+    <!-- Aqui iran apareciendo los componentes de forma dinamica -->
+    <div class="column"></div>
+    <div class="column"></div>
+  </section>
+  <section id="indicator">
+    <div class="column"></div>
+    <div class="column"></div>
+  </section>
+  <section id="panel">
+    <div class="column"></div>
+    <div class="column"></div>
+  </section>
+  <p id="disclaimer">
+    This is not an official pokemon game, this is only for educational
+    proposes
+  </p>
+
+  <script src="utils.js"></script>
+  <script src="state.js"></script>
+  <script src="components.js"></script>
+
+  <script>
+    /**
+     *  Crearemos un modulo es decir que embolvemos el codigo dentro de una funcion y
+     * haremos de ella una exprecion para que se ejecute inmediatamente (IIFE )
+     * y poder ocultar esas variables ya no podran ser accedidas desde fuera (consola)
+     * de lo contratio podriamos hacer trampa accediendo a las propiedades y alterando sus valores
+     * state.pokemons[0].health.current = 999
+     */
+
+    (function () {
+      let state = {} // inicialmente sera un objeto vacio
+
+      function turn() {
+        // El estado o source of true la fuente de confianza tiene todas la variables e informacion
+        const {pokemons = [], position = 0} = state
+        const attacked = (position + 1) % 2
+        const pokemon = pokemons[attacked]
+
+        const arena = document.getElementById("arena")
+        const container = arena.getElementsByClassName("column")[attacked] // Tendremos un arreglo de dos posiciones
+        const [bar] = container.getElementsByClassName("bar")
+        const [health] = container.getElementsByClassName("health")
+
+        // Aplicando desestructuracion
+        const {newHealth, newPercentage} = calculateStatus(
+          pokemon.health.initial,
+          pokemon.health.current,
+          getRandomNumber(20, 5)
+        )
+        const newBarColor = calculateBarColor(newPercentage) //Tenemos el nuevo valor
+        const previousBarColor = pokemon.health.bar
+
+        pokemon.health.current = newHealth
+        pokemon.health.bar = newBarColor
+
+        bar.setAttribute('style', `width: ${newPercentage}%`)
+        bar.classList.remove(previousBarColor)
+        bar.classList.add(newBarColor)
+        health.textContent = `${pokemon.health.current} /${pokemon.health.initial}`
+
+        if (newHealth > 0) {
+          state.position = (state.position + 1) % 2
+          render()
+        } else {
+          // Anteriormente ubieramos usado getElementById('panel')
+          document.querySelector('#panel .message').textContent = "Wins!!"
+          document.querySelector('#panel .moves').innerHTML = ""
+        }
+      }
+
+      function render() {
+        const {pokemons = [], position = 0} = state
+
+        const arena = document.getElementById("arena") // Pintamos los pokemones
+        const columns = arena.getElementsByClassName("column")
+        pokemons.forEach((pokemon, index) => {
+          const container = columns[index]
+
+          const pokemonHTML = pokemonImage(pokemon)
+          const statusBarHTML = statusBar(pokemon)
+
+          if (index === 0) {
+            container.innerHTML = statusBarHTML + pokemonHTML
+          } else {
+            container.innerHTML = pokemonHTML + statusBarHTML
+          }
+        });
+        // Tenemos una coleccion de elementos HTML
+        // Un "arreglo" que en cada posicion tiene un objeto y cada uno de los otros miembros tiene la misma forma
+        const indicator = document.getElementById('indicator') // Pintamos la flecha que indica el turno
+        // Selecciona esta linea para ver HTMLCollentionOfM<Element>, luego lo definimos como Array para iterarlo
+        Array.from(indicator.getElementsByClassName('column')).forEach(
+          (col, index) => {
+            if (position === index) {
+              col.innerHTML = '<div class="arrow"></div>'
+            } else {
+              col.innerHTML = ''
+            }
+          });
+        const panel = document.getElementById('panel')
+        const message = "What attack do you want to use?"
+
+        const dialogHTML = dialog(pokemons[position], message)
+        // la funcion que se va ejecutar por cada clic es turn que es la que se recibe como callback
+        const movesElement = movesBox(pokemons[position], turn)
+        const [left, right] = panel.children // Desestructuracion de los hijos de panel
+
+        if (position === 0) {
+          left.innerHTML = dialogHTML
+          right.replaceChildren(movesElement)
+        } else {
+          left.innerHTML = dialogHTML
+          right.replaceChildren(movesElement)
+        }
+      }
+      // Aqui cargara todo la pagina y usamos la variable global para agregar el evento DOMContentLoaded cuando todo termine de cargar ejecute la funcion
+      // la declaramos como asyncronica
+      window.addEventListener('DOMContentLoaded', async function () {
+        // Esta tambien sera asincronica y una vez se ejecute esta podra ejecutarse la funcion madre
+        state = await getState() // Le asignamos el valor de la funcion que ahora se encarga de retornar el estado
+        render()
+      })
+
+      // Aqui vemos la animacion, el navegador tuvo tiempo de cambiar el estado
+      // const game = setInterval(
+      //   function play() {
+      //     turn()
+      //     console.log('🚀 turn');
+      //   }, 1000);
+    })()
+  </script>
+</body>
+
+</html>
